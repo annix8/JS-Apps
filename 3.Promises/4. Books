@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Books</title>
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+    <style>
+        h1 { text-align: center; }
+        input { display: block; }
+        div { border: 1px solid black; padding: 5px; display: inline-table; width: 24%; }
+        div#aside { margin-top: 8px; width: 15%; border: 2px solid grey; }
+        div#books{ width:auto; }
+        button { display: inline-table; margin: 5% 0 5% 5%; width: 39%; }
+        button.add { width: 90%; }
+        button.load { width: 90%; padding: 10px; }
+        button.load { vertical-align: top; }
+        fieldset { display: inline-table; vertical-align: top; }
+        fieldset#main { width: 70%; }
+    </style>
+</head>
+<body>
+<h1>All Books</h1>
+<fieldset id="main">
+    <legend>Books</legend>
+    <div id="books">
+        Click Load button to download the books from the database.
+    </div>
+</fieldset>
+<div id="aside">
+    <button class="load">Load</button>
+    <fieldset id="addForm">
+        <legend>Add Book</legend>
+        <label>Title</label>
+        <input type="text" class="title"/>
+        <label>Author</label>
+        <input type="text" class="author"/>
+        <label>ISBN</label>
+        <input type="text" class="isbn"/>
+        <button class="add">Add</button>
+    </fieldset>
+</div>
+<script>
+    function attachEvents() {
+        /**
+         * In Kinvey you need to be authorized to have access to the data. This is the authorization
+         */
+        const baseUrl = 'https://baas.kinvey.com/appdata/kid_BkMIC7wH/books';
+        const base64 = btoa('peter:1234');
+        const authHeaders = {'Authorization': 'Basic ' + base64, 'Content-Type': 'application/json'};
+
+        let btnAdd = $('#addForm .add');
+        let btnLoad = $('.load');
+        btnAdd.click(addBook);
+        btnLoad.click(loadBooks);
+
+        function addBook() {
+            let bookData = JSON.stringify({
+              title: $('#addForm .title').val(),
+              author: $('#addForm .author').val(),
+              isbn: $('#addForm .isbn').val()
+            });
+            let addBook = {
+                method: "POST",
+                url: baseUrl,
+                data: bookData,
+                headers: authHeaders
+            };
+            $.ajax(addBook).then(loadBooks).catch(displayError);
+
+        }
+        function loadBooks() {
+            let getBooks = {
+                method: "GET",
+                headers: authHeaders,
+                url: baseUrl
+            };
+            $.ajax(getBooks).then(listBooks).catch(displayError);
+        }
+        function listBooks(data) {
+            $('#books').empty();
+            for(let singleRow of data){
+                let html = `<div class="book" data-id="${singleRow._id}">
+                            <label>Title</label>
+                            <input type="text" class="title" value="${singleRow.title}">
+                            <label>Author</label>
+                            <input type="text" class="author" value="${singleRow.author}">
+                            <label>ISBN</label>
+                            <input type="text" class="isbn" value="${singleRow.isbn}">
+                            <button class="update">Update</button>
+                            <button class="delete">Delete</button>
+                            </div>`;
+                $('#books').append(html);
+            }
+            let btnDelete = $('.delete');
+            let btnUpdate = $('.update');
+            btnDelete.click(deleteBook);
+            btnUpdate.click(updateBook);
+
+        }
+        function deleteBook() {
+            let bookId = $(this).parent().attr('data-id');
+            let deleteBook = {
+                method: "DELETE",
+                url: baseUrl + '/' + bookId,
+                headers: authHeaders
+            };
+            $.ajax(deleteBook).then(loadBooks).catch(displayError);
+        }
+        function updateBook() {
+            let bookId = $(this).parent().attr('data-id');
+            let bookDiv = $(this).parent();
+            let updateBookData = JSON.stringify({
+                title: $(bookDiv).find('.title').val(),
+                author: $(bookDiv).find('.author').val(),
+                isbn: $(bookDiv).find('.isbn').val()
+            });
+            let updateBook = {
+                method: "PUT",
+                url: baseUrl + '/' + bookId,
+                headers: authHeaders,
+                data: updateBookData
+            };
+           $.ajax(updateBook).then(loadBooks).catch(displayError);
+        }
+        function displayError(err) {
+            $('#books').empty();
+            $('#books').text(err.status + " : " + err.statusText);
+        }
+    }
+    attachEvents();
+</script>
+</body>
+</html>
